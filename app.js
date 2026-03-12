@@ -44,23 +44,36 @@ const emojis = [
 document.addEventListener("DOMContentLoaded", () => {
 
 // LOGIN BUTTON
+// LOGIN BUTTON
 if (googleBtn) {
-googleBtn.addEventListener("click", async () => {
 
-```
-  const result = await signInWithPopup(auth, provider);
-  const user = result.user;
+  googleBtn.addEventListener("click", async () => {
 
-  await setDoc(doc(db, "users", user.uid), {
-    name: user.displayName,
-    email: user.email,
-    photo: user.photoURL || "",
-    online: true
-  }, { merge: true });
+    try {
 
-  window.location.href = "chat.html";
-});
-```
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      console.log("Logged in user:", user);
+
+      await setDoc(doc(db, "users", user.uid), {
+        name: user.displayName,
+        email: user.email,
+        photo: user.photoURL || "",
+        online: true
+      }, { merge: true });
+
+      // redirect after login
+      window.location.href = "chat.html";
+
+    } catch (error) {
+
+      console.error("Login Error:", error);
+      alert(error.message);
+
+    }
+
+  });
 
 }
 
