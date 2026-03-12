@@ -4,13 +4,13 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from
 import { getFirestore, collection, doc, setDoc, getDocs, addDoc, updateDoc, onSnapshot, query, orderBy, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 // Firebase config
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+export const firebaseConfig = {
+  apiKey: "AIzaSyAxt94UyMn8AP8PFaSHPJ29JnZQ2KI3kZw",
+  authDomain: "chatgithub-e838d.firebaseapp.com",
+  projectId: "chatgithub-e838d",
+  storageBucket: "chatgithub-e838d.firebasestorage.app",
+  messagingSenderId: "755589384017",
+  appId: "1:755589384017:web:6af4c6d223d646cf36f570"
 };
 
 // Initialize Firebase
