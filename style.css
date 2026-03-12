@@ -33,7 +33,9 @@ border-bottom:1px solid #333;
 cursor:pointer;
 }
 
-.userRow:hover
+.userRow:hover{
+background:#2a2a2a;
+}
 
 .avatar{
 width:30px;
