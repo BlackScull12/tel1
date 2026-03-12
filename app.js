@@ -313,6 +313,32 @@ if(badge){
 badge.innerText=count>0?count:"";
 }
 
+const clearBtn = document.getElementById("clearChat");
+
+if(clearBtn){
+
+clearBtn.onclick = async ()=>{
+
+if(!chatID) return;
+
+const confirmDelete = confirm("Clear all messages in this chat?");
+
+if(!confirmDelete) return;
+
+const messagesRef = collection(db,"chats",chatID,"messages");
+
+const snapshot = await getDocs(messagesRef);
+
+snapshot.forEach(async(docu)=>{
+
+await deleteDoc(doc(db,"chats",chatID,"messages",docu.id));
+
+});
+
+};
+
+}
+  
 });
 
 }
