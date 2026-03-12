@@ -2,42 +2,41 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Chat</title>
+<title>Chat App</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="container">
 
-<!-- USERS LIST -->
-<div class="users" id="usersList"></div>
+  <!-- USERS LIST -->
+  <div class="users" id="usersList"></div>
 
-<!-- CHAT SECTION -->
-<div class="chat">
+  <!-- CHAT SECTION -->
+  <div class="chat">
 
-<div class="chatHeader">
+    <!-- CHAT HEADER -->
+    <div class="chatHeader">
+      <span id="chatUser">Select a user</span>
+      <div class="chatIcons">
+        <span class="call">📞</span>
+        <span id="clearChat">🗑</span>
+      </div>
+    </div>
 
-<span id="chatUser">Select a user</span>
+    <!-- CHAT MESSAGES -->
+    <div class="chatArea" id="chatBox"></div>
 
-<div class="chatIcons">
-<span class="call">📞</span>
-<span id="clearChat">🗑</span>
-</div>
+    <!-- MESSAGE INPUT -->
+    <div class="inputArea">
+      <input id="messageInput" placeholder="Type message...">
+      <button id="sendBtn">Send</button>
+    </div>
 
-</div>
-
-<div class="chatArea" id="chatBox"></div>
-
-<div class="inputArea">
-<input id="messageInput" placeholder="Type message...">
-<button id="sendBtn">Send</button>
-</div>
-
-</div>
+  </div>
 
 </div>
 
 <script type="module" src="app.js"></script>
-
 </body>
 </html>
