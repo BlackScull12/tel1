@@ -12,13 +12,13 @@ export const firebaseConfig = {
   appId: "1:755589384017:web:6af4c6d223d646cf36f570"
 };
 
-// Initialize Firebase
+// INIT
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// GLOBALS
+// ELEMENTS
 const googleBtn = document.getElementById("googleLogin");
 const usersList = document.getElementById("usersList");
 const chatBox = document.getElementById("chatBox");
@@ -28,30 +28,25 @@ const clearBtn = document.getElementById("clearChat");
 
 let currentUser = null;
 let chatID = null;
-let currentChatUser = null;
 
-// DOM READY
+// LOGIN
 document.addEventListener("DOMContentLoaded", () => {
 
   if (googleBtn) {
     googleBtn.addEventListener("click", async () => {
-      try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
 
-        await setDoc(doc(db, "users", user.uid), {
-          name: user.displayName,
-          email: user.email,
-          photo: user.photoURL || "",
-          online: true
-        }, { merge: true });
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
 
-        window.location.href = "chat.html";
+      await setDoc(doc(db, "users", user.uid), {
+        name: user.displayName,
+        email: user.email,
+        photo: user.photoURL || "",
+        online: true
+      }, { merge: true });
 
-      } catch (err) {
-        console.error(err);
-        alert("Login failed!");
-      }
+      window.location.href = "chat.html";
+
     });
   }
 
@@ -65,13 +60,8 @@ document.addEventListener("DOMContentLoaded", () => {
       online: true
     });
 
-    window.addEventListener("beforeunload", async () => {
-      await updateDoc(doc(db, "users", user.uid), {
-        online: false
-      });
-    });
-
     if (usersList) loadUsers();
+
   });
 
   if (sendBtn) sendBtn.addEventListener("click", sendMessage);
@@ -85,7 +75,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (clearBtn) clearBtn.addEventListener("click", clearChat);
 
 });
-
 
 // LOAD USERS
 async function loadUsers() {
@@ -110,47 +99,29 @@ async function loadUsers() {
     const name = document.createElement("span");
     name.innerText = user.name;
 
-    const status = document.createElement("span");
-    status.innerText = user.online ? "🟢" : "⚫";
-
-    const unread = document.createElement("span");
-    unread.className = "unreadBadge";
-    unread.id = "unread_" + docu.id;
-
     div.appendChild(img);
     div.appendChild(name);
-    div.appendChild(status);
-    div.appendChild(unread);
 
     div.addEventListener("click", () => openChat(docu.id, user.name));
 
     usersList.appendChild(div);
 
-    listenUnread(docu.id);
-
   });
-}
 
+}
 
 // OPEN CHAT
 function openChat(uid, name) {
 
   document.getElementById("chatUser").innerText = name;
 
-  currentChatUser = uid;
-
   chatID = [currentUser.uid, uid].sort().join("_");
-
-  setDoc(doc(db, "lastRead", chatID + "_" + currentUser.uid), {
-    time: Date.now()
-  });
 
   listenMessages();
 
 }
 
-
-// LISTEN FOR MESSAGES
+// LISTEN MESSAGES
 function listenMessages() {
 
   chatBox.innerHTML = "";
@@ -160,60 +131,22 @@ function listenMessages() {
     orderBy("time", "asc")
   );
 
-  onSnapshot(messagesQuery, async (snapshot) => {
+  onSnapshot(messagesQuery, (snapshot) => {
 
     chatBox.innerHTML = "";
 
-    snapshot.forEach(async (docu) => {
+    snapshot.forEach((docu) => {
 
       const msg = docu.data();
 
-      const row = document.createElement("div");
-
       const bubble = document.createElement("div");
 
-      const isSender = msg.sender === currentUser.uid;
+      bubble.className =
+        msg.sender === currentUser.uid ? "sender" : "receiver";
 
-      bubble.className = isSender ? "sender" : "receiver";
+      bubble.innerText = msg.text;
 
-      row.style.display = "flex";
-      row.style.justifyContent = isSender ? "flex-end" : "flex-start";
-
-      if (msg.text) bubble.innerText = msg.text;
-
-      if (isSender) {
-
-        const tick = document.createElement("span");
-        tick.className = "tick";
-        tick.innerText = msg.seen ? "✔✔" : "✔";
-
-        bubble.appendChild(tick);
-
-      } 
-      else if (!msg.seen) {
-
-        await updateDoc(
-          doc(db, "chats", chatID, "messages", docu.id),
-          { seen: true }
-        );
-
-      }
-
-      const time = document.createElement("div");
-      time.className = "time";
-
-      const date = new Date(msg.time);
-
-      time.innerText =
-        date.getHours() +
-        ":" +
-        String(date.getMinutes()).padStart(2, "0");
-
-      bubble.appendChild(time);
-
-      row.appendChild(bubble);
-
-      chatBox.appendChild(row);
+      chatBox.appendChild(bubble);
 
     });
 
@@ -223,7 +156,6 @@ function listenMessages() {
 
 }
 
-
 // SEND MESSAGE
 async function sendMessage() {
 
@@ -232,21 +164,17 @@ async function sendMessage() {
   await addDoc(collection(db, "chats", chatID, "messages"), {
     text: input.value,
     sender: currentUser.uid,
-    time: Date.now(),
-    seen: false
+    time: Date.now()
   });
 
   input.value = "";
 
 }
 
-
 // CLEAR CHAT
 async function clearChat() {
 
-  if (!chatID) return;
-
-  const confirmDelete = confirm("Clear all messages in this chat?");
+  const confirmDelete = confirm("Clear chat?");
 
   if (!confirmDelete) return;
 
@@ -257,47 +185,6 @@ async function clearChat() {
   snapshot.forEach(async (docu) => {
 
     await deleteDoc(doc(db, "chats", chatID, "messages", docu.id));
-
-  });
-
-}
-
-
-// UNREAD COUNTER
-function listenUnread(uid) {
-
-  const id = [currentUser.uid, uid].sort().join("_");
-
-  const messagesQuery = query(
-    collection(db, "chats", id, "messages"),
-    orderBy("time", "asc")
-  );
-
-  onSnapshot(messagesQuery, async (snapshot) => {
-
-    const lastReadDoc = await getDoc(
-      doc(db, "lastRead", id + "_" + currentUser.uid)
-    );
-
-    let lastRead = 0;
-
-    if (lastReadDoc.exists()) {
-      lastRead = lastReadDoc.data().time;
-    }
-
-    let count = 0;
-
-    snapshot.forEach((docu) => {
-
-      const msg = docu.data();
-
-      if (msg.sender === uid && msg.time > lastRead) count++;
-
-    });
-
-    const badge = document.getElementById("unread_" + uid);
-
-    if (badge) badge.innerText = count > 0 ? count : "";
 
   });
 
