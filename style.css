@@ -6,30 +6,6 @@ body {
   color: white;
 }
 
-/* LOGIN SCREEN */
-.login {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
-
-button {
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
-  border: none;
-  border-radius: 5px;
-  background-color: #444;
-  color: white;
-  transition: background 0.2s;
-}
-
-button:hover {
-  background-color: #666;
-}
-
 /* MAIN CONTAINER */
 .container {
   display: flex;
@@ -103,16 +79,17 @@ button:hover {
   display: inline-block;
 }
 
+/* ALIGNMENT FIX */
 .sender {
   background: white;
   color: black;
-  margin-left: auto;
+  margin-right: auto; /* LEFT SIDE */
 }
 
 .receiver {
   background: pink;
   color: black;
-  margin-right: auto;
+  margin-left: auto; /* RIGHT SIDE */
 }
 
 /* INPUT AREA */
