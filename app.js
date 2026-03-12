@@ -11,23 +11,26 @@ getDocs,
 doc,
 setDoc,
 addDoc,
-onSnapshot
+onSnapshot,
+query,
+orderBy
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const googleBtn = document.getElementById("googleLogin");
 
-if(googleBtn){
+if (googleBtn) {
 googleBtn.onclick = async () => {
 
 const result = await signInWithPopup(auth, provider);
 const user = result.user;
 
-await setDoc(doc(db,"users",user.uid),{
-name:user.displayName,
-email:user.email
+await setDoc(doc(db, "users", user.uid), {
+name: user.displayName,
+email: user.email
 });
 
-window.location.href="chat.html";
+window.location.href = "chat.html";
+
 };
 }
 
@@ -36,35 +39,37 @@ const chatBox = document.getElementById("chatBox");
 const input = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
 
-let currentUser=null;
-let chatID=null;
+let currentUser = null;
+let chatID = null;
 
-onAuthStateChanged(auth,async(user)=>{
+onAuthStateChanged(auth, async (user) => {
 
-if(!user) return;
+if (!user) return;
 
-currentUser=user;
+currentUser = user;
 
-if(usersList){
+if (usersList) {
 loadUsers();
 }
 
 });
 
-async function loadUsers(){
+async function loadUsers() {
 
-const snapshot = await getDocs(collection(db,"users"));
+usersList.innerHTML = "";
 
-snapshot.forEach((docu)=>{
+const snapshot = await getDocs(collection(db, "users"));
 
-if(docu.id===currentUser.uid) return;
+snapshot.forEach((docu) => {
+
+if (docu.id === currentUser.uid) return;
 
 const user = docu.data();
 
-const div=document.createElement("div");
-div.innerText=user.name;
+const div = document.createElement("div");
+div.innerText = user.name;
 
-div.onclick=()=>openChat(docu.id,user.name);
+div.onclick = () => openChat(docu.id, user.name);
 
 usersList.appendChild(div);
 
@@ -72,66 +77,77 @@ usersList.appendChild(div);
 
 }
 
-function openChat(uid,name){
+function openChat(uid, name) {
 
-document.getElementById("chatUser").innerText=name;
+document.getElementById("chatUser").innerText = name;
 
-chatID = [currentUser.uid,uid].sort().join("_");
+chatID = [currentUser.uid, uid].sort().join("_");
 
 listenMessages();
 
 }
 
-function listenMessages(){
+function listenMessages() {
 
-chatBox.innerHTML="";
+chatBox.innerHTML = "";
 
-onSnapshot(collection(db,"chats",chatID,"messages"),(snapshot)=>{
+const messagesQuery = query(
+collection(db, "chats", chatID, "messages"),
+orderBy("time", "asc")
+);
 
-chatBox.innerHTML="";
+onSnapshot(messagesQuery, (snapshot) => {
 
-snapshot.forEach((docu)=>{
+chatBox.innerHTML = "";
 
-const msg=docu.data();
+snapshot.forEach((docu) => {
 
-const bubble=document.createElement("div");
+const msg = docu.data();
 
-if(msg.sender===currentUser.uid){
-bubble.className="sender";
-}else{
-bubble.className="receiver";
+const bubble = document.createElement("div");
+
+if (msg.sender === currentUser.uid) {
+bubble.className = "sender";
+} else {
+bubble.className = "receiver";
 }
 
-bubble.innerText=msg.text;
+bubble.innerText = msg.text;
 
 chatBox.appendChild(bubble);
 
 });
 
+chatBox.scrollTop = chatBox.scrollHeight;
+
 });
 
 }
 
-async function sendMessage(){
+async function sendMessage() {
 
-if(!input.value || !chatID) return;
+if (!input.value || !chatID) return;
 
-await addDoc(collection(db,"chats",chatID,"messages"),{
-text:input.value,
-sender:currentUser.uid,
-time:Date.now()
+await addDoc(collection(db, "chats", chatID, "messages"), {
+text: input.value,
+sender: currentUser.uid,
+time: Date.now()
 });
 
-input.value="";
+input.value = "";
 
 }
 
-if(sendBtn) sendBtn.onclick=sendMessage;
+if (sendBtn) {
+sendBtn.onclick = sendMessage;
+}
 
-if(input){
-input.addEventListener("keypress",(e)=>{
-if(e.key==="Enter"){
+if (input) {
+input.addEventListener("keypress", (e) => {
+
+if (e.key === "Enter") {
 sendMessage();
 }
+
 });
 }
