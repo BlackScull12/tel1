@@ -1,48 +1,26 @@
-import { auth, provider, db } from "./firebase.js";
+// app.js
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDocs, addDoc, updateDoc, onSnapshot, query, orderBy, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-import {
-  signInWithPopup,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+// Firebase config
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
 
-import {
-  collection,
-  getDocs,
-  doc,
-  setDoc,
-  updateDoc,
-  addDoc,
-  getDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  deleteDoc
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-
-// LOGIN WITH GOOGLE
-const googleBtn = document.getElementById("googleLogin");
-
-if (googleBtn) {
-  googleBtn.onclick = async () => {
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
-
-    await setDoc(
-      doc(db, "users", user.uid),
-      {
-        name: user.displayName,
-        email: user.email,
-        photo: user.photoURL,
-        online: true
-      },
-      { merge: true }
-    );
-
-    window.location.href = "chat.html";
-  };
-}
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
 
 // GLOBALS
+const googleBtn = document.getElementById("googleLogin");
 const usersList = document.getElementById("usersList");
 const chatBox = document.getElementById("chatBox");
 const input = document.getElementById("messageInput");
@@ -53,22 +31,66 @@ let currentUser = null;
 let chatID = null;
 let currentChatUser = null;
 
-// AUTH STATE
-onAuthStateChanged(auth, async (user) => {
-  if (!user) return;
+// ENSURE DOM IS LOADED BEFORE ATTACHING EVENT
+document.addEventListener("DOMContentLoaded", () => {
+  // LOGIN BUTTON
+  if (googleBtn) {
+    googleBtn.addEventListener("click", async () => {
+      try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
 
-  currentUser = user;
+        // Save user in Firestore
+        await setDoc(doc(db, "users", user.uid), {
+          name: user.displayName,
+          email: user.email,
+          photo: user.photoURL || "",
+          online: true
+        }, { merge: true });
 
-  await updateDoc(doc(db, "users", user.uid), { online: true });
+        // Redirect to chat page
+        window.location.href = "chat.html";
+      } catch (error) {
+        console.error("Google sign-in error:", error);
+        alert("Login failed. Please try again.");
+      }
+    });
+  }
 
-  window.addEventListener("beforeunload", async () => {
-    await updateDoc(doc(db, "users", user.uid), { online: false });
+  // AUTH STATE CHANGE
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) return;
+    currentUser = user;
+
+    // Mark user online
+    await updateDoc(doc(db, "users", user.uid), { online: true });
+
+    // Handle user going offline
+    window.addEventListener("beforeunload", async () => {
+      await updateDoc(doc(db, "users", user.uid), { online: false });
+    });
+
+    if (usersList) loadUsers();
   });
 
-  if (usersList) loadUsers();
+  // SEND MESSAGE
+  if (sendBtn) {
+    sendBtn.addEventListener("click", sendMessage);
+  }
+
+  if (input) {
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+  }
+
+  // CLEAR CHAT
+  if (clearBtn) {
+    clearBtn.addEventListener("click", clearChat);
+  }
 });
 
-// LOAD USERS LIST
+// ===== FUNCTIONS =====
 async function loadUsers() {
   usersList.innerHTML = "";
   const snapshot = await getDocs(collection(db, "users"));
@@ -99,65 +121,47 @@ async function loadUsers() {
     div.appendChild(status);
     div.appendChild(unread);
 
-    div.onclick = () => openChat(docu.id, user.name);
+    div.addEventListener("click", () => openChat(docu.id, user.name));
 
     usersList.appendChild(div);
-
     listenUnread(docu.id);
   });
 }
 
-// OPEN CHAT
 function openChat(uid, name) {
   document.getElementById("chatUser").innerText = name;
-
   currentChatUser = uid;
   chatID = [currentUser.uid, uid].sort().join("_");
 
-  // Update last read timestamp
-  setDoc(doc(db, "lastRead", chatID + "_" + currentUser.uid), {
-    time: Date.now()
-  });
+  // Update last read
+  setDoc(doc(db, "lastRead", chatID + "_" + currentUser.uid), { time: Date.now() });
 
   listenMessages();
   listenTyping();
 }
 
-// LISTEN TO MESSAGES
 function listenMessages() {
   chatBox.innerHTML = "";
-
-  const messagesQuery = query(
-    collection(db, "chats", chatID, "messages"),
-    orderBy("time", "asc")
-  );
+  const messagesQuery = query(collection(db, "chats", chatID, "messages"), orderBy("time", "asc"));
 
   onSnapshot(messagesQuery, async (snapshot) => {
-    chatBox.innerHTML = ""; // clear DOM but messages remain in Firestore
-
+    chatBox.innerHTML = "";
     snapshot.forEach(async (docu) => {
       const msg = docu.data();
-
       const row = document.createElement("div");
       const bubble = document.createElement("div");
-
-      if (msg.sender === currentUser.uid) bubble.className = "sender";
-      else bubble.className = "receiver";
-
+      bubble.className = msg.sender === currentUser.uid ? "sender" : "receiver";
       if (msg.text) bubble.innerText = msg.text;
 
+      // Seen ticks
       if (msg.sender === currentUser.uid) {
         const tick = document.createElement("span");
         tick.className = "tick";
         tick.innerText = msg.seen ? "✔✔" : "✔";
         bubble.appendChild(tick);
       } else {
-        // Mark as seen
         if (!msg.seen) {
-          await updateDoc(
-            doc(db, "chats", chatID, "messages", docu.id),
-            { seen: true }
-          );
+          await updateDoc(doc(db, "chats", chatID, "messages", docu.id), { seen: true });
         }
       }
 
@@ -165,23 +169,19 @@ function listenMessages() {
       const time = document.createElement("div");
       time.className = "time";
       const date = new Date(msg.time);
-      time.innerText =
-        date.getHours() + ":" + String(date.getMinutes()).padStart(2, "0");
+      time.innerText = date.getHours() + ":" + String(date.getMinutes()).padStart(2, "0");
       bubble.appendChild(time);
 
       row.appendChild(bubble);
       chatBox.appendChild(row);
     });
 
-    // Scroll to bottom
     chatBox.scrollTop = chatBox.scrollHeight;
   });
 }
 
-// SEND MESSAGE
 async function sendMessage() {
   if (!input.value || !chatID) return;
-
   await addDoc(collection(db, "chats", chatID, "messages"), {
     text: input.value,
     sender: currentUser.uid,
@@ -193,27 +193,11 @@ async function sendMessage() {
   input.value = "";
 }
 
-if (sendBtn) sendBtn.onclick = sendMessage;
-
-if (input) {
-  input.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") sendMessage();
-  });
-
-  input.addEventListener("input", async () => {
-    if (!chatID) return;
-    await setDoc(doc(db, "typing", chatID), { user: currentUser.uid });
-  });
-}
-
-// TYPING INDICATOR
 function listenTyping() {
   const typingRef = doc(db, "typing", chatID);
-
   onSnapshot(typingRef, (snapshot) => {
     const data = snapshot.data();
     let typingDiv = document.getElementById("typingIndicator");
-
     if (!typingDiv) {
       typingDiv = document.createElement("div");
       typingDiv.id = "typingIndicator";
@@ -221,25 +205,16 @@ function listenTyping() {
       typingDiv.style.opacity = "0.7";
       document.querySelector(".chatArea").appendChild(typingDiv);
     }
-
-    if (data && data.user && data.user !== currentUser.uid) typingDiv.innerText = "Typing...";
-    else typingDiv.innerText = "";
+    typingDiv.innerText = data && data.user && data.user !== currentUser.uid ? "Typing..." : "";
   });
 }
 
-// UNREAD MESSAGE COUNTER
 function listenUnread(uid) {
   const id = [currentUser.uid, uid].sort().join("_");
-
-  const messagesQuery = query(
-    collection(db, "chats", id, "messages"),
-    orderBy("time", "asc")
-  );
+  const messagesQuery = query(collection(db, "chats", id, "messages"), orderBy("time", "asc"));
 
   onSnapshot(messagesQuery, async (snapshot) => {
-    const lastReadDoc = await getDoc(
-      doc(db, "lastRead", id + "_" + currentUser.uid)
-    );
+    const lastReadDoc = await getDoc(doc(db, "lastRead", id + "_" + currentUser.uid));
     let lastRead = 0;
     if (lastReadDoc.exists()) lastRead = lastReadDoc.data().time;
 
@@ -254,17 +229,14 @@ function listenUnread(uid) {
   });
 }
 
-// CLEAR CHAT BUTTON
-if (clearBtn) {
-  clearBtn.onclick = async () => {
-    if (!chatID) return;
-    const confirmDelete = confirm("Clear all messages in this chat?");
-    if (!confirmDelete) return;
+async function clearChat() {
+  if (!chatID) return;
+  const confirmDelete = confirm("Clear all messages in this chat?");
+  if (!confirmDelete) return;
 
-    const messagesRef = collection(db, "chats", chatID, "messages");
-    const snapshot = await getDocs(messagesRef);
-    snapshot.forEach(async (docu) => {
-      await deleteDoc(doc(db, "chats", chatID, "messages", docu.id));
-    });
-  };
+  const messagesRef = collection(db, "chats", chatID, "messages");
+  const snapshot = await getDocs(messagesRef);
+  snapshot.forEach(async (docu) => {
+    await deleteDoc(doc(db, "chats", chatID, "messages", docu.id));
+  });
 }
