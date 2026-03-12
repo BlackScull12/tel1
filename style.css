@@ -79,6 +79,20 @@ body {
   display: inline-block;
 }
 
+/* YOUR MESSAGE (RIGHT SIDE) */
+.sender {
+  background: white;
+  color: black;
+  margin-left: auto;
+}
+
+/* OTHER PERSON MESSAGE (LEFT SIDE) */
+.receiver {
+  background: pink;
+  color: black;
+  margin-right: auto;
+}
+
 /* ALIGNMENT FIX */
 .sender {
   background: white;
