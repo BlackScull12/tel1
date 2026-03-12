@@ -119,3 +119,10 @@ margin-left:4px;
 flex:1;
 padding:10px;
 }
+
+.chatIcons{
+display:flex;
+gap:15px;
+cursor:pointer;
+font-size:18px;
+}
