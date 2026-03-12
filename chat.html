@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Chat App</title>
@@ -7,10 +7,13 @@
 </head>
 <body>
 
+<!-- MAIN CONTAINER -->
 <div class="container">
 
   <!-- USERS LIST -->
-  <div class="users" id="usersList"></div>
+  <div class="users" id="usersList">
+    <!-- Users will be dynamically loaded here -->
+  </div>
 
   <!-- CHAT SECTION -->
   <div class="chat">
@@ -25,7 +28,9 @@
     </div>
 
     <!-- CHAT MESSAGES -->
-    <div class="chatArea" id="chatBox"></div>
+    <div class="chatArea" id="chatBox">
+      <!-- Chat messages will be dynamically loaded here -->
+    </div>
 
     <!-- MESSAGE INPUT -->
     <div class="inputArea">
@@ -36,6 +41,9 @@
   </div>
 
 </div>
+
+<!-- OPTIONAL: Add a login button if this is the landing page -->
+<!-- <button id="googleLogin">Login with Google</button> -->
 
 <script type="module" src="app.js"></script>
 </body>
