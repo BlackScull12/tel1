@@ -54,8 +54,7 @@ background:#222;
 flex:1;
 overflow:auto;
 padding:10px;
-background-image:url("https://i.imgur.com/8Km9tLL.png");
-background-size:cover;
+background:black;
 }
 
 .sender{
