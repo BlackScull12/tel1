@@ -15,10 +15,8 @@ addDoc,
 getDoc,
 onSnapshot,
 query,
-orderBy,
-where
+orderBy
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-
 
 const googleBtn = document.getElementById("googleLogin");
 
@@ -32,6 +30,7 @@ const user = result.user;
 await setDoc(doc(db,"users",user.uid),{
 name:user.displayName,
 email:user.email,
+photo:user.photoURL,
 online:true
 },{merge:true});
 
@@ -41,7 +40,6 @@ window.location.href="chat.html";
 
 }
 
-
 const usersList = document.getElementById("usersList");
 const chatBox = document.getElementById("chatBox");
 const input = document.getElementById("messageInput");
@@ -50,8 +48,6 @@ const sendBtn = document.getElementById("sendBtn");
 let currentUser=null;
 let chatID=null;
 let currentChatUser=null;
-
-
 
 onAuthStateChanged(auth, async(user)=>{
 
@@ -63,7 +59,7 @@ await updateDoc(doc(db,"users",user.uid),{
 online:true
 });
 
-window.addEventListener("beforeunload", async ()=>{
+window.addEventListener("beforeunload",async()=>{
 await updateDoc(doc(db,"users",user.uid),{
 online:false
 });
@@ -75,8 +71,6 @@ loadUsers();
 
 });
 
-
-
 async function loadUsers(){
 
 usersList.innerHTML="";
@@ -87,12 +81,14 @@ snapshot.forEach((docu)=>{
 
 if(docu.id===currentUser.uid) return;
 
-const user=docu.data();
+const user = docu.data();
 
 const div=document.createElement("div");
+div.className="userRow";
 
-div.style.display="flex";
-div.style.justifyContent="space-between";
+const img=document.createElement("img");
+img.src=user.photo;
+img.className="avatar";
 
 const name=document.createElement("span");
 name.innerText=user.name;
@@ -100,18 +96,24 @@ name.innerText=user.name;
 const status=document.createElement("span");
 status.innerText=user.online?"🟢":"⚫";
 
+const unread=document.createElement("span");
+unread.className="unreadBadge";
+unread.id="unread_"+docu.id;
+
+div.appendChild(img);
 div.appendChild(name);
 div.appendChild(status);
+div.appendChild(unread);
 
 div.onclick=()=>openChat(docu.id,user.name);
 
 usersList.appendChild(div);
 
+listenUnread(docu.id);
+
 });
 
 }
-
-
 
 function openChat(uid,name){
 
@@ -121,12 +123,14 @@ currentChatUser=uid;
 
 chatID=[currentUser.uid,uid].sort().join("_");
 
+setDoc(doc(db,"lastRead",chatID+"_"+currentUser.uid),{
+time:Date.now()
+});
+
 listenMessages();
 listenTyping();
 
 }
-
-
 
 function listenMessages(){
 
@@ -145,37 +149,50 @@ snapshot.forEach(async(docu)=>{
 
 const msg=docu.data();
 
+const row=document.createElement("div");
+
 const bubble=document.createElement("div");
 
 if(msg.sender===currentUser.uid){
 bubble.className="sender";
 }else{
 bubble.className="receiver";
-
-if(!msg.seen){
-await updateDoc(doc(db,"chats",chatID,"messages",docu.id),{
-seen:true
-});
-}
-
 }
 
 bubble.innerText=msg.text;
 
+const time=document.createElement("div");
+time.className="time";
+
+const date=new Date(msg.time);
+time.innerText=date.getHours()+":"+String(date.getMinutes()).padStart(2,'0');
+
+bubble.appendChild(time);
+
 if(msg.sender===currentUser.uid){
 
 const tick=document.createElement("span");
-
-tick.style.fontSize="10px";
-tick.style.marginLeft="6px";
+tick.className="tick";
 
 tick.innerText=msg.seen?"✔✔":"✔";
 
 bubble.appendChild(tick);
 
+}else{
+
+if(!msg.seen){
+
+await updateDoc(doc(db,"chats",chatID,"messages",docu.id),{
+seen:true
+});
+
 }
 
-chatBox.appendChild(bubble);
+}
+
+row.appendChild(bubble);
+
+chatBox.appendChild(row);
 
 });
 
@@ -184,8 +201,6 @@ chatBox.scrollTop=chatBox.scrollHeight;
 });
 
 }
-
-
 
 async function sendMessage(){
 
@@ -208,13 +223,9 @@ input.value="";
 
 }
 
-
-
 if(sendBtn){
 sendBtn.onclick=sendMessage;
 }
-
-
 
 if(input){
 
@@ -238,8 +249,6 @@ user:currentUser.uid
 
 }
 
-
-
 function listenTyping(){
 
 const typingRef=doc(db,"typing",chatID);
@@ -254,8 +263,6 @@ if(!typingDiv){
 
 typingDiv=document.createElement("div");
 typingDiv.id="typingIndicator";
-typingDiv.style.fontSize="12px";
-typingDiv.style.opacity="0.7";
 
 document.querySelector(".chatArea").appendChild(typingDiv);
 
@@ -269,6 +276,47 @@ typingDiv.innerText="Typing...";
 
 typingDiv.innerText="";
 
+}
+
+});
+
+}
+
+function listenUnread(uid){
+
+const id=[currentUser.uid,uid].sort().join("_");
+
+const messagesQuery=query(
+collection(db,"chats",id,"messages"),
+orderBy("time","asc")
+);
+
+onSnapshot(messagesQuery,async(snapshot)=>{
+
+const lastReadDoc=await getDoc(doc(db,"lastRead",id+"_"+currentUser.uid));
+
+let lastRead=0;
+
+if(lastReadDoc.exists()){
+lastRead=lastReadDoc.data().time;
+}
+
+let count=0;
+
+snapshot.forEach((docu)=>{
+
+const msg=docu.data();
+
+if(msg.sender===uid && msg.time>lastRead){
+count++;
+}
+
+});
+
+const badge=document.getElementById("unread_"+uid);
+
+if(badge){
+badge.innerText=count>0?count:"";
 }
 
 });
